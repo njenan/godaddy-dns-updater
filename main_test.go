@@ -2,21 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func removeWhitespace(s string) string {
-	return strings.ReplaceAll(
-		strings.ReplaceAll(
-			strings.ReplaceAll(s, " ", ""),
-			"\t", ""),
-		"\n", "")
-}
 
 type RoundTripFunc func(req *http.Request) *http.Response
 
@@ -30,25 +22,20 @@ func NewTestClient(fn RoundTripFunc) *http.Client {
 	}
 }
 
+func recordStrings(r []Record) string {
+	b, _ := json.Marshal(r)
+	return string(b)
+}
+
 func TestItUpdatesTheDNSARecords(t *testing.T) {
 	client := NewTestClient(func(req *http.Request) *http.Response {
 		if req.Method == http.MethodGet {
 			return &http.Response{
 				StatusCode: 200,
-				Body: ioutil.NopCloser(bytes.NewBufferString(`[
-	{
-		"data": "100.100.100.100",
-		"name": "*",
-		"ttl": 600,
-		"type": "A"
-	},
-	{
-		"data": "100.100.100.100",
-		"name": "@",
-		"ttl": 600,
-		"type": "A"
-	}
-]`)),
+				Body: ioutil.NopCloser(bytes.NewBufferString(recordStrings([]Record{
+					{Data: "100.100.100.100", Name: "*", TTL: 600, Type: "A"},
+					{Data: "100.100.100.100", Name: "@", TTL: 600, Type: "A"},
+				}))),
 				Header: make(http.Header),
 			}
 		} else if req.Method == http.MethodPut {
@@ -56,20 +43,10 @@ func TestItUpdatesTheDNSARecords(t *testing.T) {
 			assert.Equal(t, req.Method, http.MethodPut)
 			b, err := ioutil.ReadAll(req.Body)
 			assert.NoError(t, err)
-			assert.Equal(t, string(b), removeWhitespace(`[
-	{
-		"data": "101.101.101.101",
-		"name": "*",
-		"ttl": 600,
-		"type": "A"
-	},
-	{
-		"data": "101.101.101.101",
-		"name": "@",
-		"ttl": 600,
-		"type": "A"
-	}
-]`))
+			assert.Equal(t, string(b), recordStrings([]Record{
+				{Data: "101.101.101.101", Name: "*", TTL: 600, Type: "A"},
+				{Data: "101.101.101.101", Name: "@", TTL: 600, Type: "A"},
+			}))
 			return &http.Response{
 				StatusCode: 200,
 				Body:       ioutil.NopCloser(bytes.NewBufferString(`OK`)),
@@ -95,26 +72,11 @@ func TestItUpdatesAllFoundNames(t *testing.T) {
 		if req.Method == http.MethodGet {
 			return &http.Response{
 				StatusCode: 200,
-				Body: ioutil.NopCloser(bytes.NewBufferString(removeWhitespace(`[
-	{
-		"data": "100.100.100.100",
-		"name": "*",
-		"ttl": 600,
-		"type": "A"
-	},
-	{
-		"data": "100.100.100.100",
-		"name": "@",
-		"ttl": 600,
-		"type": "A"
-	},
-	{
-		"data": "100.100.100.100",
-		"name": "bob",
-		"ttl": 600,
-		"type": "A"
-	}
-]`))),
+				Body: ioutil.NopCloser(bytes.NewBufferString(recordStrings([]Record{
+					{Data: "100.100.100.100", Name: "*", TTL: 600, Type: "A"},
+					{Data: "100.100.100.100", Name: "@", TTL: 600, Type: "A"},
+					{Data: "100.100.100.100", Name: "bob", TTL: 600, Type: "A"},
+				}))),
 				Header: make(http.Header),
 			}
 		} else if req.Method == http.MethodPut {
@@ -122,26 +84,11 @@ func TestItUpdatesAllFoundNames(t *testing.T) {
 			assert.Equal(t, req.Method, http.MethodPut)
 			b, err := ioutil.ReadAll(req.Body)
 			assert.NoError(t, err)
-			assert.Equal(t, string(b), removeWhitespace(`[
-	{
-		"data": "101.101.101.101",
-		"name": "*",
-		"ttl": 600,
-		"type": "A"
-	},
-	{
-		"data": "101.101.101.101",
-		"name": "@",
-		"ttl": 600,
-		"type": "A"
-	},
-	{
-		"data": "101.101.101.101",
-		"name": "bob",
-		"ttl": 600,
-		"type": "A"
-	}
-]`))
+			assert.Equal(t, string(b), recordStrings([]Record{
+				{Data: "101.101.101.101", Name: "*", TTL: 600, Type: "A"},
+				{Data: "101.101.101.101", Name: "@", TTL: 600, Type: "A"},
+				{Data: "101.101.101.101", Name: "bob", TTL: 600, Type: "A"},
+			}))
 
 			return &http.Response{
 				StatusCode: 200,

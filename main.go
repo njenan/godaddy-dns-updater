@@ -14,7 +14,8 @@ type Option interface {
 type Config struct {
 	Endpoint    string
 	HttpClient  *http.Client
-	RecordNames []string
+	RecordNames map[string]bool
+	DryRun      bool
 }
 
 type WithEndpoint string
@@ -40,8 +41,22 @@ var _ Option = WithHttpClient{}
 type WithRecordName string
 
 func (d WithRecordName) Apply(c Config) Config {
-	c.RecordNames = append(c.RecordNames, string(d))
+	c.RecordNames[string(d)] = true
 	return c
+}
+
+type WithDryRun bool
+
+func (d WithDryRun) Apply(c Config) Config {
+	c.DryRun = bool(d)
+	return c
+}
+
+var _ Option = WithDryRun(true)
+
+type Report struct {
+	DidUpdate bool
+	Records   []*Record
 }
 
 type Record struct {
@@ -54,14 +69,16 @@ type Record struct {
 type Updater struct {
 }
 
-func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (interface{}, error) {
-	c := Config{}
-	for _, o := range options {
-		c = o.Apply(c)
+func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*Report, error) {
+	// Set up config default
+	c := Config{
+		Endpoint:    "",
+		HttpClient:  http.DefaultClient,
+		RecordNames: make(map[string]bool),
 	}
 
-	if c.HttpClient == nil {
-		c.HttpClient = http.DefaultClient
+	for _, o := range options {
+		c = o.Apply(c)
 	}
 
 	url := c.Endpoint + "/v1/domains/" + domain + "/records/A"
@@ -85,24 +102,35 @@ func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (in
 		return nil, err
 	}
 
+	var updateNeeded bool
 	for _, r := range records {
-		r.Data = targetIP
+		if len(c.RecordNames) == 0 || c.RecordNames[r.Name] {
+			if r.Data != targetIP {
+				updateNeeded = true
+				r.Data = targetIP
+			}
+		}
 	}
 
-	b, err := json.Marshal(records)
-	if err != nil {
-		return nil, err
+	report := &Report{Records: records}
+	if !c.DryRun && updateNeeded {
+		b, err := json.Marshal(records)
+		if err != nil {
+			return nil, err
+		}
+
+		req, err = http.NewRequest(http.MethodPut, url, strings.NewReader(string(b)))
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = c.HttpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		report.DidUpdate = true
 	}
 
-	req, err = http.NewRequest(http.MethodPut, url, strings.NewReader(string(b)))
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.HttpClient.Do(req)
-
-	return nil, err
-}
-
-func main() {
+	return report, err
 }

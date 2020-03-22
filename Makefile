@@ -7,9 +7,6 @@ build: version
 install: version
 	go install -ldflags "-X main.Version=$(shell cat version)"
 
-version:
-	git describe --tags --abbrev=0 | tee version
-
 dockerize: build
 	docker build . -t docker.nathanjenan.me/njenan/godaddy-dns-updater:latest
 	docker build . -t docker.nathanjenan.me/njenan/godaddy-dns-updater:$(shell git rev-parse --short HEAD)

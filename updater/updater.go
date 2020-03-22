@@ -16,6 +16,8 @@ type Config struct {
 	HttpClient  *http.Client
 	RecordNames map[string]bool
 	DryRun      bool
+	AuthKey     string
+	AuthSecret  string
 }
 
 type WithEndpoint string
@@ -45,6 +47,8 @@ func (d WithRecordName) Apply(c Config) Config {
 	return c
 }
 
+var _ Option = WithRecordName("")
+
 type WithDryRun bool
 
 func (d WithDryRun) Apply(c Config) Config {
@@ -53,6 +57,24 @@ func (d WithDryRun) Apply(c Config) Config {
 }
 
 var _ Option = WithDryRun(true)
+
+type WithAuthKey string
+
+func (k WithAuthKey) Apply(c Config) Config {
+	c.AuthKey = string(k)
+	return c
+}
+
+var _ Option = WithAuthKey("")
+
+type WithAuthSecret string
+
+func (s WithAuthSecret) Apply(c Config) Config {
+	c.AuthSecret = string(s)
+	return c
+}
+
+var _ Option = WithAuthSecret("")
 
 type Report struct {
 	DidUpdate bool
@@ -72,7 +94,7 @@ type Updater struct {
 func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*Report, error) {
 	// Set up config default
 	c := Config{
-		Endpoint:    "",
+		Endpoint:    "https://api.godaddy.com",
 		HttpClient:  http.DefaultClient,
 		RecordNames: make(map[string]bool),
 	}
@@ -85,6 +107,10 @@ func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*R
 	req, err := http.NewRequest(http.MethodGet, url, strings.NewReader(""))
 	if err != nil {
 		return nil, err
+	}
+
+	if c.AuthKey != "" {
+		req.Header.Add("Authorization", "sso-key "+c.AuthKey+":"+c.AuthSecret)
 	}
 
 	resp, err := c.HttpClient.Do(req)
@@ -122,6 +148,10 @@ func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*R
 		req, err = http.NewRequest(http.MethodPut, url, strings.NewReader(string(b)))
 		if err != nil {
 			return nil, err
+		}
+
+		if c.AuthKey != "" {
+			req.Header.Add("Authorization", c.AuthKey+":"+c.AuthSecret)
 		}
 
 		_, err = c.HttpClient.Do(req)

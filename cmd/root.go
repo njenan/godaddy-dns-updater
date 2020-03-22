@@ -12,7 +12,7 @@ var rootCmd = &cobra.Command{
 	Short: "Keep Godaddy dns updated from the command line",
 	Long:  `A CLI designed to keep A records in GoDaddy updated quickly and easily.`,
 	Run: func(cmd *cobra.Command, args []string) {
-
+		cmd.Help()
 	},
 }
 

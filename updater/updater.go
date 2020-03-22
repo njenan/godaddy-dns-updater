@@ -9,10 +9,10 @@ import (
 )
 
 type Option interface {
-	Apply(Config) Config
+	Apply(config) config
 }
 
-type Config struct {
+type config struct {
 	Endpoint    string
 	HttpClient  *http.Client
 	RecordNames map[string]bool
@@ -23,7 +23,7 @@ type Config struct {
 
 type WithEndpoint string
 
-func (e WithEndpoint) Apply(c Config) Config {
+func (e WithEndpoint) Apply(c config) config {
 	c.Endpoint = string(e)
 	return c
 }
@@ -34,7 +34,7 @@ type WithHttpClient struct {
 	*http.Client
 }
 
-func (h WithHttpClient) Apply(c Config) Config {
+func (h WithHttpClient) Apply(c config) config {
 	c.HttpClient = h.Client
 	return c
 }
@@ -43,7 +43,7 @@ var _ Option = WithHttpClient{}
 
 type WithRecordName string
 
-func (d WithRecordName) Apply(c Config) Config {
+func (d WithRecordName) Apply(c config) config {
 	c.RecordNames[string(d)] = true
 	return c
 }
@@ -52,7 +52,7 @@ var _ Option = WithRecordName("")
 
 type WithDryRun bool
 
-func (d WithDryRun) Apply(c Config) Config {
+func (d WithDryRun) Apply(c config) config {
 	c.DryRun = bool(d)
 	return c
 }
@@ -61,7 +61,7 @@ var _ Option = WithDryRun(true)
 
 type WithAuthKey string
 
-func (k WithAuthKey) Apply(c Config) Config {
+func (k WithAuthKey) Apply(c config) config {
 	c.AuthKey = string(k)
 	return c
 }
@@ -70,7 +70,7 @@ var _ Option = WithAuthKey("")
 
 type WithAuthSecret string
 
-func (s WithAuthSecret) Apply(c Config) Config {
+func (s WithAuthSecret) Apply(c config) config {
 	c.AuthSecret = string(s)
 	return c
 }
@@ -94,7 +94,7 @@ type Updater struct {
 
 func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*Report, error) {
 	// Set up config default
-	c := Config{
+	c := config{
 		Endpoint:    "https://api.godaddy.com",
 		HttpClient:  http.DefaultClient,
 		RecordNames: make(map[string]bool),

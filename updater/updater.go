@@ -3,6 +3,7 @@ package updater
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -151,12 +152,19 @@ func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*R
 		}
 
 		if c.AuthKey != "" {
-			req.Header.Add("Authorization", c.AuthKey+":"+c.AuthSecret)
+			req.Header.Add("Authorization", "sso-key "+c.AuthKey+":"+c.AuthSecret)
 		}
 
-		_, err = c.HttpClient.Do(req)
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err = c.HttpClient.Do(req)
 		if err != nil {
 			return nil, err
+		}
+
+		if resp.StatusCode != 200 {
+			b, _ := ioutil.ReadAll(resp.Body)
+			return nil, fmt.Errorf("error while updating A records got response code %v body: %v\n", resp.StatusCode, string(b))
 		}
 
 		report.DidUpdate = true

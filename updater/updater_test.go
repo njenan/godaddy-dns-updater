@@ -39,18 +39,26 @@ func TestItUpdatesTheDNSARecords(t *testing.T) {
 				Header: make(http.Header),
 			}
 		} else if req.Method == http.MethodPut {
-			assert.Equal(t, req.URL.String(), "localhost:3333/v1/domains/example.com/records/A")
-			assert.Equal(t, req.Method, http.MethodPut)
-			b, err := ioutil.ReadAll(req.Body)
-			assert.NoError(t, err)
-			assert.Equal(t, string(b), recordStrings([]Record{
-				{Data: "101.101.101.101", Name: "*", TTL: 600, Type: "A"},
-				{Data: "101.101.101.101", Name: "@", TTL: 600, Type: "A"},
-			}))
-			return &http.Response{
-				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`OK`)),
-				Header:     make(http.Header),
+			if req.Header.Get("Content-Type") == "application/json" {
+				assert.Equal(t, req.URL.String(), "localhost:3333/v1/domains/example.com/records/A")
+				assert.Equal(t, req.Method, http.MethodPut)
+				b, err := ioutil.ReadAll(req.Body)
+				assert.NoError(t, err)
+				assert.Equal(t, string(b), recordStrings([]Record{
+					{Data: "101.101.101.101", Name: "*", TTL: 600, Type: "A"},
+					{Data: "101.101.101.101", Name: "@", TTL: 600, Type: "A"},
+				}))
+				return &http.Response{
+					StatusCode: 200,
+					Body:       ioutil.NopCloser(bytes.NewBufferString(`OK`)),
+					Header:     make(http.Header),
+				}
+
+			} else {
+				return &http.Response{
+					StatusCode: 415,
+					Header:     make(http.Header),
+				}
 			}
 		} else {
 			return &http.Response{
@@ -233,7 +241,7 @@ func TestItReportsNoChangeWhenNoChangeIsNeeded(t *testing.T) {
 
 func TestItSendsAuthVars(t *testing.T) {
 	client := NewTestClient(func(req *http.Request) *http.Response {
-		if req.Header.Get("Authorization") == "asdf:fdsa" {
+		if req.Header.Get("Authorization") == "sso-key asdf:fdsa" {
 			if req.Method == http.MethodGet {
 				return &http.Response{
 					StatusCode: 200,

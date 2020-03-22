@@ -110,9 +110,7 @@ func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*R
 		return nil, err
 	}
 
-	if c.AuthKey != "" {
-		req.Header.Add("Authorization", "sso-key "+c.AuthKey+":"+c.AuthSecret)
-	}
+	applyAuthHeader(c, req)
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
@@ -150,12 +148,9 @@ func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*R
 		if err != nil {
 			return nil, err
 		}
-
-		if c.AuthKey != "" {
-			req.Header.Add("Authorization", "sso-key "+c.AuthKey+":"+c.AuthSecret)
-		}
-
 		req.Header.Add("Content-Type", "application/json")
+
+		applyAuthHeader(c, req)
 
 		resp, err = c.HttpClient.Do(req)
 		if err != nil {
@@ -171,4 +166,11 @@ func (r *Updater) CheckAndUpdate(domain, targetIP string, options ...Option) (*R
 	}
 
 	return report, err
+}
+
+func applyAuthHeader(c config, r *http.Request) {
+	if c.AuthKey != "" {
+		r.Header.Add("Authorization", "sso-key "+c.AuthKey+":"+c.AuthSecret)
+	}
+
 }

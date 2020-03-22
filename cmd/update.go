@@ -13,6 +13,12 @@ var authKey string
 var authSecret string
 var recordNames []string
 var dryRun bool
+var reportType string
+
+const (
+	summaryType = "summary"
+	jsonType    = "json"
+)
 
 func init() {
 	updateCmd.Flags().StringVarP(&endpoint, "endpoint", "e", "https://api.godaddy.com", "API endpoint to use")
@@ -20,6 +26,7 @@ func init() {
 	updateCmd.Flags().StringVarP(&authSecret, "auth-secret", "s", "", "Auth secret to use when authenticating")
 	updateCmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "Dry-run (report what will be updated)")
 	updateCmd.Flags().StringSliceVarP(&recordNames, "record-names", "r", []string{}, "List of A record names to update (if not specified, all found A records will be updated)")
+	updateCmd.Flags().StringVarP(&reportType, "report-type", "t", summaryType, "How to format the output of hte command, options are [json, summary] default: summary")
 
 	rootCmd.AddCommand(updateCmd)
 }
@@ -41,18 +48,22 @@ var updateCmd = &cobra.Command{
 		// TODO pass in record names
 
 		updateClient := updater.Updater{}
-		records, err := updateClient.CheckAndUpdate(domain, ip, updater.WithEndpoint(endpoint), updater.WithDryRun(dryRun), updater.WithAuthKey(authKey), updater.WithAuthSecret(authSecret))
+		report, err := updateClient.CheckAndUpdate(domain, ip, updater.WithEndpoint(endpoint), updater.WithDryRun(dryRun), updater.WithAuthKey(authKey), updater.WithAuthSecret(authSecret))
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		b, err := json.Marshal(records)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		if reportType == jsonType {
+			b, err := json.Marshal(report)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 
-		fmt.Println(string(b))
+			fmt.Println(string(b))
+		} else {
+			fmt.Printf("updated records: %v\n", len(report.Records))
+		}
 	},
 }

@@ -46,9 +46,16 @@ var updateCmd = &cobra.Command{
 		}
 
 		// TODO pass in record names
+		options := []updater.Option{
+			updater.WithEndpoint(endpoint), updater.WithDryRun(dryRun), updater.WithAuthKey(authKey), updater.WithAuthSecret(authSecret),
+		}
+
+		for _, r := range recordNames {
+			options = append(options, updater.WithRecordName(r))
+		}
 
 		updateClient := updater.Updater{}
-		report, err := updateClient.CheckAndUpdate(domain, ip, updater.WithEndpoint(endpoint), updater.WithDryRun(dryRun), updater.WithAuthKey(authKey), updater.WithAuthSecret(authSecret))
+		report, err := updateClient.CheckAndUpdate(domain, ip, options...)
 		if err != nil {
 			fmt.Println(err)
 			return

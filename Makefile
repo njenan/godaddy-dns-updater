@@ -9,4 +9,7 @@ version:
 
 dockerize: version build
 	docker build . -t docker.nathanjenan.me/njenan/godaddy-dns-updater:latest
+	docker build . -t docker.nathanjenan.me/njenan/godaddy-dns-updater:$(shell git rev-parse --short HEAD)
 	docker push docker.nathanjenan.me/njenan/godaddy-dns-updater:latest
+	docker push docker.nathanjenan.me/njenan/godaddy-dns-updater:$(shell git rev-parse --short HEAD)
+
